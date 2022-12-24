@@ -11,6 +11,7 @@ function ISInventoryTransferAction:new (character, item, srcContainer, destConta
 	o.dontAdd = false;
 	o.srcContainer = srcContainer;
 	o.destContainer = destContainer;
+	o.transactions = {}
 	-- handle people right click the same item while eating it
 	if not srcContainer or not destContainer then
 		o.maxTime = 0;
@@ -48,10 +49,11 @@ function ISInventoryTransferAction:new (character, item, srcContainer, destConta
             destCapacityDelta = 0.4;
         end
 
-
-        local w = item:getActualWeight();
-        if w > 3 then w = 3; end;
-        o.maxTime = o.maxTime * (w) * destCapacityDelta;
+		if item then -- kludge to fix error when filling gas bottles out of backpack
+			local w = item:getActualWeight();
+			if w > 3 then w = 3; end;
+			o.maxTime = o.maxTime * (w) * destCapacityDelta;
+		end
 
         if getCore():getGameMode()=="LastStand" then
             o.maxTime = o.maxTime * 0.3;
@@ -82,14 +84,19 @@ function ISInventoryTransferAction:new (character, item, srcContainer, destConta
 	if character:isTimedActionInstant() then
 		o.maxTime = 1;
 	end
+	
+	if item then -- kludge to fix error when filling gas bottles out of backpack
+		if item:isFavorite() and not o.destContainer:isInCharacterInventory(o.character) then o.maxTime = 0; end
+	end
+	
+	if item then -- kludge to fix error when filling gas bottles out of backpack
+		o.queueList = {};
+		local queuedItem = {items = {o.item}, time = o.maxTime, type = o.item:getFullType()};
+		table.insert(o.queueList, queuedItem);
+		o.loopedAction = true
+	end
 
-    if item:isFavorite() and not o.destContainer:isInCharacterInventory(o.character) then o.maxTime = 0; end
-
-	o.maxTime = o.maxTime * 0.5
-	o.queueList = {};
-	local queuedItem = {items = {o.item}, time = o.maxTime, type = o.item:getFullType()};
-	table.insert(o.queueList, queuedItem);
-	o.loopedAction = true
+	o.maxTime = o.maxTime * 0.5;
 
     return o
 end
